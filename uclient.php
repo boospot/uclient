@@ -135,9 +135,9 @@ if ( ! class_exists( 'Uclient' ) ) {
 			$url = $this->api_endpoint;
 
 			// Append parameters for GET request
-//			$url .= '&' . http_build_query( $params );
+			$url .= "action=$action&" . http_build_query( $params );
 
-			$url .= 'action=get&license=' . $this->license_key;
+//			$url .= "action=$action&license=" . $this->license_key;
 			// Send the request
 			$request = wp_remote_get( $url );
 
@@ -149,7 +149,8 @@ if ( ! class_exists( 'Uclient' ) ) {
 			$response_body = wp_remote_retrieve_body( $request );
 			$response      = (object) json_decode( $response_body, true );
 
-
+//			var_dump_pretty( $response );
+//			die();
 //			check to see if there is error in api call
 			if ( $this->is_api_error( $response ) ) {
 
@@ -157,8 +158,13 @@ if ( ! class_exists( 'Uclient' ) ) {
 
 				$this->log_error();
 				add_action( 'admin_notices', array( $this, 'show_admin_notices' ) );
+//				add_action( "after_plugin_row_{$this->plugin_slug}", array( $this, 'show_plugin_notices' ) ,11 , 2);
+				add_action( "in_plugin_update_message-{$this->plugin_slug}", array(
+					$this,
+					'show_plugin_notices_update'
+				), 10, 2 );
 
-				return false;
+//				return false;
 			}
 
 
@@ -183,10 +189,10 @@ if ( ! class_exists( 'Uclient' ) ) {
 			}
 
 
-			if ( isset( $response->result ) && $response->result == 'error' ) {
+			if ( isset( $response->error ) && $response->error ) {
 //				rao_var_dump( $response);
 
-				$this->error_code    = $response->error_code;
+				$this->error_code    = $response->message_code;
 				$this->error_message = $response->message;
 
 				return true;
@@ -204,9 +210,9 @@ if ( ! class_exists( 'Uclient' ) ) {
 		public function get_license_info() {
 
 			$params = array(
-				'secret_key'        => $this->secret_key,
-				'license_key'       => $this->license_key,
-				'license_email'     => $this->license_email,
+//				'secret_key'        => $this->secret_key,
+				'license'           => $this->license_key,
+//				'license_email'     => $this->license_email,
 				'registered_domain' => $_SERVER['SERVER_NAME']
 			);
 
@@ -214,7 +220,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 			 * Call to API
 			 */
 
-			$license_info = $this->call_api( 'slm_check', $params );
+			$license_info = $this->call_api( 'get', $params );
 
 //			var_dump( $license_info);
 //            die();
@@ -230,7 +236,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 				} else {
 					// Re-fetch the data from API after activating the license
 
-					$license_info = $this->call_api( 'slm_check', $params );
+					$license_info = $this->call_api( 'get', $params );
 
 				}
 
@@ -381,7 +387,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 
 					$transient->response[ $theme_slug ] = array(
 						'new_version' => $digital_asset->version,
-						'package'     => $digital_asset->download_link,
+						'package'     => $digital_asset->download_url,
 						'url'         => $digital_asset->homepage
 					);
 				} else {
@@ -390,7 +396,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 
 					$transient->response[ $plugin_slug ] = (object) array(
 						'new_version' => $digital_asset->version,
-						'package'     => $digital_asset->download_link,
+						'package'     => $digital_asset->download_url,
 						'slug'        => $plugin_slug
 					);
 				}
@@ -437,6 +443,51 @@ if ( ! class_exists( 'Uclient' ) ) {
 
 			// Not our request, let WordPress handle this.
 			return $res;
+		}
+
+		/**
+		 *
+		 */
+		public function show_plugin_notices( $currentPluginMetadata, $newPluginMetadata ) {
+			$wp_list_table = _get_list_table( 'WP_Plugins_List_Table' );
+
+			printf(
+				'<tr class="plugin-update-tr%s active" id="%s" data-slug="%s" data-plugin="%s">' .
+				'<td colspan="%s" class="plugin-update colspanchange">' .
+				'<div class="update-message notice inline %s notice-alt"><p>',
+				'',
+				esc_attr( $this->plugin_slug . '-update' ),
+				esc_attr( $this->plugin_slug ),
+				esc_attr( $this->plugin_slug ),
+				esc_attr( $wp_list_table->get_column_count() ),
+				'notice-error'
+			);
+
+			$format = __( "There was an error fetching the updates for <b>%s</b>, Details of error is <b>%s</b>. Please take necessary action to resolve it or contact the Plugin Author: %s at %s.", $this->get_text_domain() );
+			printf(
+				$format,
+				$this->get_plugin_data_attr( 'Name' ),
+				$this->get_api_error_text(),
+				$this->get_plugin_data_attr( 'Author' ),
+				$this->get_plugin_data_attr( 'AuthorURI' )
+			);
+
+			echo $format . '</p></div></td></tr>';
+
+		}
+
+		public function show_plugin_notices_update( $plugin_data, $response ) {
+
+            echo '</p></div><div class="update-message notice inline notice-error notice-alt"><p>';
+			$format = __( "There was an error fetching the updates for <b>%s</b>, Details of error is <b>%s</b>. Please take necessary action to resolve it or contact the Plugin Author: %s at %s.", $this->get_text_domain() );
+			printf(
+				$format,
+				$this->get_plugin_data_attr( 'Name' ),
+				$this->get_api_error_text(),
+				$this->get_plugin_data_attr( 'Author' ),
+				$this->get_plugin_data_attr( 'AuthorURI' )
+			);
+
 		}
 
 
