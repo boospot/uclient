@@ -211,9 +211,9 @@ if ( ! class_exists( 'Uclient' ) ) {
 
 			$params = array(
 //				'secret_key'        => $this->secret_key,
-				'license'           => $this->license_key,
+				'license' => $this->license_key,
 //				'license_email'     => $this->license_email,
-				'registered_domain' => $_SERVER['SERVER_NAME']
+				'domain'  => $_SERVER['SERVER_NAME']
 			);
 
 			/*
@@ -478,7 +478,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 
 		public function show_plugin_notices_update( $plugin_data, $response ) {
 
-            echo '</p></div><div class="update-message notice inline notice-error notice-alt"><p>';
+			echo '</p></div><div class="update-message notice inline notice-error notice-alt"><p>';
 			$format = __( "There was an error fetching the updates for <b>%s</b>, Details of error is <b>%s</b>. Please take necessary action to resolve it or contact the Plugin Author: %s at %s.", $this->get_text_domain() );
 			printf(
 				$format,
