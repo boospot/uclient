@@ -1,0 +1,13 @@
+{
+    "name": "boospot/uclient",
+    "description": "This is client package for uLicense main server plugin",
+    "type": "library",
+    "license": "GPL3",
+    "authors": [
+        {
+            "name": "Rao Abid",
+            "email": "rao@booskills.com"
+        }
+    ],
+    "require": {}
+}
