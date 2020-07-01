@@ -59,8 +59,12 @@ if ( ! class_exists( 'Uclient' ) ) {
 		 */
 
 		public function __construct(
-			$api_endpoint, $license_key,
-			$type = 'theme', $plugin_file = '', $plugin_data = ''
+			$api_endpoint,
+			$license_key,
+			$asset_identifier,
+			$type = 'theme',
+			$plugin_file = '',
+			$plugin_data = ''
 		) {
 
 
@@ -70,12 +74,12 @@ if ( ! class_exists( 'Uclient' ) ) {
 
 			// Store setup data
 //			$this->secret_key    = sanitize_text_field( $secret_key );
-			$this->api_endpoint = esc_url_raw( $api_endpoint );
-			$this->license_key  = sanitize_key( $license_key );
-//			$this->license_email = sanitize_email( $license_email );
-			$this->type        = sanitize_key( $type );
-			$this->plugin_file = $plugin_file;
-			$this->plugin_slug = plugin_basename( $this->plugin_file );
+			$this->api_endpoint     = esc_url_raw( $api_endpoint );
+			$this->license_key      = sanitize_key( $license_key );
+			$this->asset_identifier = sanitize_key( $asset_identifier );
+			$this->type             = sanitize_key( $type );
+			$this->plugin_file      = $plugin_file;
+			$this->plugin_slug      = plugin_basename( $this->plugin_file );
 
 			if ( $type === 'theme' ) {
 				// Check for updates (for themes)
@@ -210,7 +214,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 		public function get_license_info() {
 
 			$params = array(
-//				'secret_key'        => $this->secret_key,
+				'asset'   => $this->asset_identifier,
 				'license' => $this->license_key,
 //				'license_email'     => $this->license_email,
 				'domain'  => $_SERVER['SERVER_NAME']
