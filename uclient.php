@@ -16,6 +16,8 @@ if ( ! class_exists( 'Uclient' ) ) {
 		 */
 		private $api_endpoint;
 
+		private $version = 1.0;
+
 		/**
 		 * @var string secret key from SLM License Server
 		 */
@@ -64,7 +66,8 @@ if ( ! class_exists( 'Uclient' ) ) {
 			$asset_identifier,
 			$type = 'theme',
 			$plugin_file = '',
-			$plugin_data = ''
+			$plugin_data = '',
+			$plugin_settings_page_hook = ''
 		) {
 
 
@@ -74,12 +77,14 @@ if ( ! class_exists( 'Uclient' ) ) {
 
 			// Store setup data
 //			$this->secret_key    = sanitize_text_field( $secret_key );
-			$this->api_endpoint     = esc_url_raw( $api_endpoint );
-			$this->license_key      = sanitize_key( $license_key );
-			$this->asset_identifier = sanitize_key( $asset_identifier );
-			$this->type             = sanitize_key( $type );
-			$this->plugin_file      = $plugin_file;
-			$this->plugin_slug      = plugin_basename( $this->plugin_file );
+			$this->api_endpoint              = esc_url_raw( $api_endpoint );
+			$this->license_key               = sanitize_key( $license_key );
+			$this->asset_identifier          = sanitize_key( $asset_identifier );
+			$this->type                      = sanitize_key( $type );
+			$this->plugin_file               = $plugin_file;
+			$this->plugin_slug               = plugin_basename( $this->plugin_file );
+			$this->plugin_settings_page_hook = $plugin_settings_page_hook;
+
 
 			if ( $type === 'theme' ) {
 				// Check for updates (for themes)
@@ -90,10 +95,86 @@ if ( ! class_exists( 'Uclient' ) ) {
 				// Showing plugin information
 				add_filter( 'plugins_api', array( $this, 'plugins_api_handler' ), 10, 3 );
 
-
 			}
 
+			add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_scripts' ) );
+//			add_action( 'wp_ajax_uclient_license_verification', array( $this, 'ajax_handler_license_verification' ) );
+			add_action( 'wp_ajax_uclient_license_settings_update', array(
+				$this,
+				'ajax_handler_license_settings_update'
+			) );
 
+		}
+
+
+		/**
+		 * Admin enqueue scripts for license validation fields and ajax
+		 */
+		public function admin_enqueue_scripts( $hook ) {
+
+
+			if ( $this->plugin_settings_page_hook !== $hook ) {
+				return;
+			}
+
+			wp_enqueue_script(
+				'uclient-license-validation',
+				plugin_dir_url( __FILE__ ) . 'js/license-validation.js',
+				array( 'jquery' ),
+				$this->version,
+				true
+			);
+
+//			wp_localize_script(
+//				'uclient-license-validation',
+//				'uclient-ajax',
+//				apply_filters(
+//					'uclient_admin_localize_script',
+//					array(
+//						'ajax_url'                => admin_url( 'admin-ajax.php' ),
+//						'_uclient_nonce_settings' => wp_create_nonce( 'update_license_key_in_settings' ),
+//					)
+//				)
+//			);
+
+		}
+
+
+		public function ajax_handler_license_settings_update() {
+
+			// Check Admin referrer
+			check_admin_referer( 'update_license_key_in_settings' );
+
+			/**
+			 * Do not forget to check your nonce for security!
+			 *
+			 * @link https://codex.wordpress.org/Function_Reference/wp_verify_nonce
+			 */
+			if ( ! wp_verify_nonce( $_REQUEST['_wpnonce'], 'update_license_key_in_settings' ) ) {
+				wp_send_json_error( esc_html__( 'Security token invalid', $this->get_text_domain() ) );
+				wp_die();
+			}
+
+			// Check user capabilities
+			if ( ! current_user_can( 'manage_options' ) ) {
+				wp_send_json_error( esc_html__( 'Sorry, You do not have sufficient permissions to do this action.', $this->get_text_domain() ) );
+				wp_die();
+			}
+
+			// We are all good to process
+
+
+			$response = array(
+				'results' => array(),
+			);
+
+			wp_send_json_error( esc_html__( 'We are all good', 'uschema' ) );
+			wp_die();
+
+			$response['success'] = true;
+
+			wp_send_json( $response );
+			wp_die();
 		}
 
 		public function get_text_domain() {
@@ -118,6 +199,137 @@ if ( ! class_exists( 'Uclient' ) ) {
 //                    it is not a theme or plugin, i don't know what it might be ;)
 					return false;
 			}
+		}
+
+		/**
+		 * @param string $license_key acquired from the site options
+		 * @param string $text_domain
+		 *
+		 * @return array
+		 */
+		public static function get_license_activation_fields_metabox( $license_key, $license_status, $text_domain = '' ) {
+
+			$fields = array();
+
+//			if ( ! $license_key ):
+
+			$fields['license_source'] = array(
+				'id'      => 'license_source',
+				'name'    => esc_html__( 'I have key from:', $text_domain ),
+				'type'    => 'select',
+				'options' => array(
+					''              => '--' . esc_html__( 'Please select', $text_domain ) . '--',
+					'envato'        => esc_html__( 'Envato', $text_domain ),
+					'plugin_author' => esc_html__( 'Plugin Author', $text_domain ),
+				),
+				'std'     => 'envato',
+				'hidden'  => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' )
+			);
+
+
+			$fields['envato_key'] = array(
+				'id'      => 'envato_key',
+				'name'    => esc_html__( 'Envato Purchase Code', $text_domain ),
+				'type'    => 'text',
+				'size'    => 60,
+				'class'   => 'uclient_purchase_key',
+//				'std'     => '1e2a7b3e-6e2c-4234-a8a2-c754c5d70c81',
+				'visible' => array( 'license_source', '=', 'envato' ),
+			);
+
+			$fields['plugin_author_key'] = array(
+				'id'      => 'plugin_author_key',
+				'name'    => esc_html__( 'Plugin Author Purchase Code', $text_domain ),
+				'type'    => 'text',
+				'size'    => 60,
+				'class'   => 'uclient_purchase_key',
+				'visible' => array( 'license_source', '=', 'plugin_author' ),
+			);
+
+			$fields['validate_purchase_code_button'] = array(
+				'id'     => 'validate_purchase_code_button',
+				'name'   => esc_html__( '&nbsp;', $text_domain ),
+				'save'   => false,
+				'type'   => 'button',
+				'class'  => 'uclient_validate_license_key_button',
+				'std'    => esc_html__( 'Activate', $text_domain ),
+				'hidden' => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' ),
+				'after'  => '<span class="uclient-response-message"></span>'
+			);
+
+//			$fields[] = array(
+//				'name'       => esc_html__( '&nbsp;', $text_domain ),
+//				'type'       => 'custom_html',
+//				'desc'       => '<span id="validation-response"></span>',
+//				'save_field' => false,
+//			);
+
+			$fields[] = array(
+				'type'   => 'divider',
+				'hidden' => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' )
+			);
+
+//			endif;
+
+			$fields['license_heading'] = array(
+				'type'       => 'custom_html',
+				'std'        => '<h3>' . esc_html__( 'License Details', $text_domain ) . '</h3>',
+				'save_field' => false,
+				'visible'    => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' )
+			);
+
+			$fields['purchase_code'] = array(
+				'id'         => 'purchase_code',
+				'name'       => esc_html__( 'Purchase Code', $text_domain ),
+				'type'       => 'text',
+				'size'       => 60,
+				'attributes' => array(
+					'readonly' => true,
+				),
+				'visible'    => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' )
+			);
+
+			$fields['license_key'] = array(
+				'id'         => 'license_key',
+				'name'       => esc_html__( 'License Key from Update Server', $text_domain ),
+				'type'       => 'text',
+				'size'       => 60,
+				'desc'       => esc_html__( 'License Key acquired from plugin update server', $text_domain ),
+				'attributes' => array(
+					'readonly' => true,
+				),
+			);
+
+			$fields['license_status'] = array(
+				'id'   => 'license_status',
+				'name' => esc_html__( 'License Status', $text_domain ),
+				'type' => 'hidden',
+//				'attributes' => array(
+//					'readonly' => true,
+//				),
+			);
+
+			$fields['license_status_html'] = array(
+				'id'         => 'license_status_html',
+				'type'       => 'custom_html',
+				'name'       => esc_html__( 'License Status', $text_domain ),
+				'desc'       => '<span style="font-size:1.5em; text-transform: uppercase;">' . $license_status . '</span>',
+				'save_field' => false,
+				'visible'    => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' )
+			);
+
+			$fields['deactivate_license_key_button'] = array(
+				'id'      => 'deactivate_license_key_button',
+				'name'    => esc_html__( '&nbsp;', $text_domain ),
+				'save'    => false,
+				'type'    => 'button',
+				'std'     => esc_html__( 'Deatctivate', $text_domain ),
+				'visible' => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' ),
+				'after'   => '<span class="uclient-response-message"></span>'
+			);
+
+
+			return $fields;
 		}
 
 
