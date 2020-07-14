@@ -3,19 +3,23 @@ class UClient {
 
     constructor() {
         this.actionButton = '';
+        this.localizeVars = uclientLocalize;
     }
 
     disableButton() {
 
         this.actionButton.disabled = true
+        this.actionButton.textContent = this.localizeVars.messages.working;
 
-        this.actionButton.textContent = 'Working...';
     }
 
-    enableButton() {
+    enableButton(text = '') {
+        if (!text) {
+            text = this.localizeVars.messages.activate;
+        }
         this.actionButton.disabled = false;
 
-        this.actionButton.textContent = 'Activate';
+        this.actionButton.textContent = text;
     }
 
     getVendor() {
@@ -32,7 +36,7 @@ class UClient {
 
     getUIReady() {
         this.disableButton();
-        this.displayMessage('Working');
+        this.displayMessage(this.localizeVars.messages.working);
 
         // Clear the previous messages
         this.clearResponse();
@@ -40,7 +44,7 @@ class UClient {
 
     async validatePurchaseCode(event) {
 
-        console.log('Validating Purcahse');
+        console.log('Validating Purchase');
 
         this.actionButton = event.target;
 
@@ -48,14 +52,14 @@ class UClient {
 
         const vendor = this.getVendor();
         if (!vendor) {
-            this.displayError('Please select a vendor');
+            this.displayError(this.localizeVars.messages.select_vendor);
             this.enableButton();
             return;
         }
 
         const purchaseCode = this.getPurchaseCode(vendor);
         if (!purchaseCode) {
-            this.displayError('Please provide valid purchase code');
+            this.displayError(this.localizeVars.messages.provide_purchase_code);
             this.enableButton();
             return;
         }
@@ -71,13 +75,13 @@ class UClient {
                 this.updateLicenseDetails('active', response.license.license_key, purchaseCode, purchaseCode);
 
             } else {
-                message = message + ' ' + 'Check developer console (f12) for further information.'
+                message = message + ' ' + this.localizeVars.additionalToErrorMessage;
 
-                console.log(response);
+                console.log(response); // We need to log it for viewership
                 this.displayError(message)
+                this.enableButton();
             }
 
-            this.enableButton();
             console.log('Validation process complete');
 
         } catch (error) {
@@ -98,7 +102,7 @@ class UClient {
 
         const licenseKey = this.getLicenseKey();
         if (!licenseKey) {
-            this.displayError('Could not find license key to deactivate.');
+            this.displayError(this.localizeVars.messages.provide_license_key);
             this.enableButton();
             return;
         }
@@ -114,13 +118,12 @@ class UClient {
                 this.updateLicenseDetails('', '', '', '');
 
             } else {
-                message = message + ' ' + 'Check developer console (f12) for further information.'
+                message = message + ' ' + this.localizeVars.additionalToErrorMessage;
 
                 console.log(response);
                 this.displayError(message)
+                this.enableButton(this.localizeVars.messages.deactivate);
             }
-
-            this.enableButton();
             console.log('Deactivation process complete');
 
         } catch (error) {
@@ -146,6 +149,8 @@ class UClient {
         const envato_key = document.getElementById('envato_key');
         envato_key.value = envatoKey;
 
+        const author_key = document.getElementById('author_key');
+        author_key.value = licenseKey;
 
         jQuery('#submit').trigger('click');
 
@@ -153,7 +158,7 @@ class UClient {
 
     async callLicenseActivationApi(key, vendor) {
 
-        const apiUrl = `http://ulicense.test/api/license-manager/v1/action=validate?key=${key}&vendor=${vendor}&domain=${window.location.hostname}`;
+        const apiUrl = `${this.localizeVars.apiEndPoint}action=validate?key=${key}&vendor=${vendor}&domain=${window.location.hostname}`;
 
         const result = await fetch(apiUrl);
 
@@ -164,7 +169,7 @@ class UClient {
 
     async callLicenseDeactivationApi(license) {
 
-        const apiUrl = `http://ulicense.test/api/license-manager/v1/action=deactivate?license=${license}&domain=${encodeURI(window.location.hostname)}`;
+        const apiUrl = `${this.localizeVars.apiEndPoint}action=deactivate?license=${license}&domain=${encodeURI(window.location.hostname)}`;
 
         const result = await fetch(apiUrl);
 
@@ -181,8 +186,6 @@ class UClient {
 
         let responseCont = this.actionButton.parentNode.parentNode.nextElementSibling;
 
-        console.log(this.actionButton)
-
         responseCont.innerHTML = '';
         responseCont.classList.remove('notice-success');
         responseCont.classList.remove('notice-error');
@@ -194,7 +197,7 @@ class UClient {
         const responseCont = this.getResponseContainer();
 
         responseCont.classList.add('notice-success');
-        responseCont.textContent = message;
+        responseCont.innerHTML = message;
 
     }
 
@@ -202,19 +205,18 @@ class UClient {
         const responseCont = this.getResponseContainer();
 
         responseCont.classList.add('notice-error');
-        responseCont.textContent = message;
+        responseCont.innerHTML = message;
 
     }
 
     displayMessage(message) {
         const responseCont = this.getResponseContainer();
 
-        responseCont.textContent = message;
+        responseCont.innerHTML = message;
     }
 
 
     bindEventHandlers() {
-        const self = this;
 
         const activateButton = document.getElementById('validate_purchase_code_button');
         if (activateButton) {

@@ -64,10 +64,10 @@ if ( ! class_exists( 'Uclient' ) ) {
 			$api_endpoint,
 			$license_key,
 			$asset_identifier,
-			$type = 'theme',
+			$type = 'plugin',
 			$plugin_file = '',
-			$plugin_data = '',
-			$plugin_settings_page_hook = ''
+			$plugin_settings_page_hook = '',
+			$additional_to_error_message = ''
 		) {
 
 
@@ -76,14 +76,14 @@ if ( ! class_exists( 'Uclient' ) ) {
 
 
 			// Store setup data
-//			$this->secret_key    = sanitize_text_field( $secret_key );
-			$this->api_endpoint              = esc_url_raw( $api_endpoint );
-			$this->license_key               = sanitize_key( $license_key );
-			$this->asset_identifier          = sanitize_key( $asset_identifier );
-			$this->type                      = sanitize_key( $type );
-			$this->plugin_file               = $plugin_file;
-			$this->plugin_slug               = plugin_basename( $this->plugin_file );
-			$this->plugin_settings_page_hook = $plugin_settings_page_hook;
+			$this->api_endpoint                = trailingslashit( esc_url_raw( $api_endpoint ) );
+			$this->license_key                 = sanitize_key( $license_key );
+			$this->asset_identifier            = sanitize_key( $asset_identifier );
+			$this->type                        = sanitize_key( $type );
+			$this->plugin_file                 = $plugin_file;
+			$this->plugin_slug                 = plugin_basename( $this->plugin_file );
+			$this->plugin_settings_page_hook   = $plugin_settings_page_hook;
+			$this->additional_to_error_message = $additional_to_error_message;
 
 
 			if ( $type === 'theme' ) {
@@ -98,11 +98,6 @@ if ( ! class_exists( 'Uclient' ) ) {
 			}
 
 			add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_scripts' ) );
-//			add_action( 'wp_ajax_uclient_license_verification', array( $this, 'ajax_handler_license_verification' ) );
-			add_action( 'wp_ajax_uclient_license_settings_update', array(
-				$this,
-				'ajax_handler_license_settings_update'
-			) );
 
 		}
 
@@ -125,56 +120,26 @@ if ( ! class_exists( 'Uclient' ) ) {
 				true
 			);
 
-//			wp_localize_script(
-//				'uclient-license-validation',
-//				'uclient-ajax',
-//				apply_filters(
-//					'uclient_admin_localize_script',
-//					array(
-//						'ajax_url'                => admin_url( 'admin-ajax.php' ),
-//						'_uclient_nonce_settings' => wp_create_nonce( 'update_license_key_in_settings' ),
-//					)
-//				)
-//			);
-
-		}
-
-
-		public function ajax_handler_license_settings_update() {
-
-			// Check Admin referrer
-			check_admin_referer( 'update_license_key_in_settings' );
-
-			/**
-			 * Do not forget to check your nonce for security!
-			 *
-			 * @link https://codex.wordpress.org/Function_Reference/wp_verify_nonce
-			 */
-			if ( ! wp_verify_nonce( $_REQUEST['_wpnonce'], 'update_license_key_in_settings' ) ) {
-				wp_send_json_error( esc_html__( 'Security token invalid', $this->get_text_domain() ) );
-				wp_die();
-			}
-
-			// Check user capabilities
-			if ( ! current_user_can( 'manage_options' ) ) {
-				wp_send_json_error( esc_html__( 'Sorry, You do not have sufficient permissions to do this action.', $this->get_text_domain() ) );
-				wp_die();
-			}
-
-			// We are all good to process
-
-
-			$response = array(
-				'results' => array(),
+			wp_localize_script(
+				'uclient-license-validation',
+				'uclientLocalize',
+				apply_filters(
+					'uclient_admin_localize_script',
+					array(
+						'apiEndPoint'              => $this->api_endpoint,
+						'additionalToErrorMessage' => $this->additional_to_error_message,
+						'messages'                 => array(
+							'working'               => 'Working',
+							'activate'              => 'Activate',
+							'deactivate'            => 'Deactivate',
+							'select_vendor'         => 'Please select a fucking vendor',
+							'provide_purchase_code' => 'Please provide valid purchase code',
+							'provide_license_key'   => 'Please provide license key.'
+						)
+					)
+				)
 			);
 
-			wp_send_json_error( esc_html__( 'We are all good', 'uschema' ) );
-			wp_die();
-
-			$response['success'] = true;
-
-			wp_send_json( $response );
-			wp_die();
 		}
 
 		public function get_text_domain() {
@@ -207,20 +172,18 @@ if ( ! class_exists( 'Uclient' ) ) {
 		 *
 		 * @return array
 		 */
-		public static function get_license_activation_fields_metabox( $license_key, $license_status, $text_domain = '' ) {
+		public static function get_license_activation_fields_metabox( $text_domain = '' ) {
 
 			$fields = array();
-
-//			if ( ! $license_key ):
 
 			$fields['license_source'] = array(
 				'id'      => 'license_source',
 				'name'    => esc_html__( 'I have key from:', $text_domain ),
 				'type'    => 'select',
 				'options' => array(
-					''              => '--' . esc_html__( 'Please select', $text_domain ) . '--',
-					'envato'        => esc_html__( 'Envato', $text_domain ),
-					'plugin_author' => esc_html__( 'Plugin Author', $text_domain ),
+					''       => '--' . esc_html__( 'Please select', $text_domain ) . '--',
+					'envato' => esc_html__( 'Envato', $text_domain ),
+					'author' => esc_html__( 'Plugin Author', $text_domain ),
 				),
 				'std'     => 'envato',
 				'hidden'  => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' )
@@ -233,17 +196,16 @@ if ( ! class_exists( 'Uclient' ) ) {
 				'type'    => 'text',
 				'size'    => 60,
 				'class'   => 'uclient_purchase_key',
-//				'std'     => '1e2a7b3e-6e2c-4234-a8a2-c754c5d70c81',
 				'visible' => array( 'license_source', '=', 'envato' ),
 			);
 
-			$fields['plugin_author_key'] = array(
-				'id'      => 'plugin_author_key',
-				'name'    => esc_html__( 'Plugin Author Purchase Code', $text_domain ),
+			$fields['author_key'] = array(
+				'id'      => 'author_key',
+				'name'    => esc_html__( 'Author Purchase Code', $text_domain ),
 				'type'    => 'text',
 				'size'    => 60,
 				'class'   => 'uclient_purchase_key',
-				'visible' => array( 'license_source', '=', 'plugin_author' ),
+				'visible' => array( 'license_source', '=', 'author' ),
 			);
 
 			$fields['validate_purchase_code_button'] = array(
@@ -257,19 +219,11 @@ if ( ! class_exists( 'Uclient' ) ) {
 				'after'  => '<span class="uclient-response-message"></span>'
 			);
 
-//			$fields[] = array(
-//				'name'       => esc_html__( '&nbsp;', $text_domain ),
-//				'type'       => 'custom_html',
-//				'desc'       => '<span id="validation-response"></span>',
-//				'save_field' => false,
-//			);
-
 			$fields[] = array(
 				'type'   => 'divider',
 				'hidden' => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' )
 			);
 
-//			endif;
 
 			$fields['license_heading'] = array(
 				'type'       => 'custom_html',
@@ -304,18 +258,15 @@ if ( ! class_exists( 'Uclient' ) ) {
 				'id'   => 'license_status',
 				'name' => esc_html__( 'License Status', $text_domain ),
 				'type' => 'hidden',
-//				'attributes' => array(
-//					'readonly' => true,
-//				),
 			);
 
-			$fields['license_status_html'] = array(
-				'id'         => 'license_status_html',
+			$fields['license_status_active_html'] = array(
+				'id'         => 'license_status_active_html',
 				'type'       => 'custom_html',
 				'name'       => esc_html__( 'License Status', $text_domain ),
-				'desc'       => '<span style="font-size:1.5em; text-transform: uppercase;">' . $license_status . '</span>',
+				'desc'       => '<span style="font-size:1.5em; color:green;">' . esc_html__( 'Active', $text_domain ) . '</span>',
 				'save_field' => false,
-				'visible'    => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' )
+				'visible'    => array( 'license_status', '=', 'active' )
 			);
 
 			$fields['deactivate_license_key_button'] = array(
@@ -562,7 +513,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 
 
 		private function is_theme() {
-			return $this->type == 'theme';
+			return $this->type === 'theme';
 		}
 
 
@@ -695,13 +646,11 @@ if ( ! class_exists( 'Uclient' ) ) {
 		public function show_plugin_notices_update( $plugin_data, $response ) {
 
 			echo '</p></div><div class="update-message notice inline notice-error notice-alt"><p>';
-			$format = __( "There was an error fetching the updates for <b>%s</b>, Details of error is <b>%s</b>. Please take necessary action to resolve it or contact the Plugin Author: %s at %s.", $this->get_text_domain() );
+			$format = __( "There was an error fetching the updates for <b>%s</b>, Details of error is <b>%s</b>. Please contact plugin author with the error specified.", $this->get_text_domain() );
 			printf(
 				$format,
 				$this->get_plugin_data_attr( 'Name' ),
-				$this->get_api_error_text(),
-				$this->get_plugin_data_attr( 'Author' ),
-				$this->get_plugin_data_attr( 'AuthorURI' )
+				$this->get_api_error_text()
 			);
 
 		}
@@ -714,13 +663,11 @@ if ( ! class_exists( 'Uclient' ) ) {
                 <p>
 					<?php
 
-					$format = __( "There was an error fetching the updates for <b>%s</b>, Details of error is <b>%s</b>. Please take necessary action to resolve it or contact the Plugin Author: %s at %s.", $this->get_text_domain() );
+					$format = __( "There was an error fetching the updates for <b>%s</b>, Details of error is <b>%s</b>. Please contact plugin author with the error specified.", $this->get_text_domain() );
 					printf(
 						$format,
 						$this->get_plugin_data_attr( 'Name' ),
-						$this->get_api_error_text(),
-						$this->get_plugin_data_attr( 'Author' ),
-						$this->get_plugin_data_attr( 'AuthorURI' )
+						$this->get_api_error_text()
 					);
 
 					?>
@@ -731,7 +678,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 		}
 
 		private function get_api_error_text() {
-			return $this->error_message . " - [ Error Code: " . $this->error_code . ' ] ';
+			return $this->error_message . " [" . $this->error_code . "]";
 		}
 
 
