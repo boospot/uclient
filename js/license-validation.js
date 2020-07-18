@@ -158,7 +158,7 @@ class UClient {
 
     async callLicenseActivationApi(key, vendor) {
 
-        const apiUrl = `${this.localizeVars.apiEndPoint}action=validate?key=${key}&vendor=${vendor}&domain=${window.location.hostname}`;
+        const apiUrl = `${this.localizeVars.apiEndPoint}validate?key=${key}&vendor=${vendor}&domain=${window.location.hostname}`;
 
         const result = await fetch(apiUrl);
 
@@ -169,7 +169,7 @@ class UClient {
 
     async callLicenseDeactivationApi(license) {
 
-        const apiUrl = `${this.localizeVars.apiEndPoint}action=deactivate?license=${license}&domain=${encodeURI(window.location.hostname)}`;
+        const apiUrl = `${this.localizeVars.apiEndPoint}deactivate?license=${license}&domain=${encodeURI(window.location.hostname)}`;
 
         const result = await fetch(apiUrl);
 
