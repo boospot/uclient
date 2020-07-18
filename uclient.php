@@ -131,6 +131,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 					array(
 						'apiEndPoint'              => $this->api_endpoint,
 						'additionalToErrorMessage' => $this->additional_to_error_message,
+						'assetIdentifier'          => $this->asset_identifier,
 						'messages'                 => array(
 							'working'               => 'Working',
 							'activate'              => 'Activate',
@@ -305,9 +306,8 @@ if ( ! class_exists( 'Uclient' ) ) {
 			$url = $this->api_endpoint;
 
 			// Append parameters for GET request
-			$url .= "action=$action&" . http_build_query( $params );
+			$url .= "$action?" . http_build_query( $params );
 
-//			$url .= "action=$action&license=" . $this->license_key;
 			// Send the request
 			$request = wp_remote_get( $url );
 
