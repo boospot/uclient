@@ -2,7 +2,7 @@
     "name": "boospot/uclient",
     "description": "This is client package for uLicense main server plugin to provide auto plugin or theme updates.",
     "type": "library",
-    "license": "GPL3",
+    "license": "GPL-2.0",
     "homepage": "https://github.com/boospot/uclient",
     "keywords": [
         "wordpress",
