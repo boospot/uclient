@@ -4,4 +4,4 @@ client for the uLicense server
 
 ## Installation
 
-`composer require boospot/uclient`
+`composer require boospot/uclient:dev-master`

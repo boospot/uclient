@@ -107,6 +107,9 @@ if ( ! class_exists( 'Uclient' ) ) {
 		 */
 		public function admin_enqueue_scripts( $hook ) {
 
+			if ( empty( $this->plugin_settings_page_hook ) ) {
+				echo '<script>console.info("admin_page_hook: ' . $hook . '")</script>';
+			}
 
 			if ( $this->plugin_settings_page_hook !== $hook ) {
 				return;
