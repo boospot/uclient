@@ -190,6 +190,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 					'author' => esc_html__( 'Plugin Author', $text_domain ),
 				),
 				'std'     => 'envato',
+				'class'   => 'license_source',
 				'hidden'  => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' )
 			);
 
@@ -199,7 +200,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 				'name'    => esc_html__( 'Envato Purchase Code', $text_domain ),
 				'type'    => 'text',
 				'size'    => 60,
-				'class'   => 'uclient_purchase_key',
+				'class'   => 'envato_key',
 				'visible' => array( 'license_source', '=', 'envato' ),
 			);
 
@@ -208,7 +209,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 				'name'    => esc_html__( 'Author Purchase Code', $text_domain ),
 				'type'    => 'text',
 				'size'    => 60,
-				'class'   => 'uclient_purchase_key',
+				'class'   => 'author_key',
 				'visible' => array( 'license_source', '=', 'author' ),
 			);
 
@@ -217,7 +218,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 				'name'   => esc_html__( '&nbsp;', $text_domain ),
 				'save'   => false,
 				'type'   => 'button',
-				'class'  => 'uclient_validate_license_key_button',
+				'class'  => 'validate_purchase_code_button',
 				'std'    => esc_html__( 'Activate', $text_domain ),
 				'hidden' => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' ),
 				'after'  => '<span class="uclient-response-message"></span>'
@@ -244,7 +245,9 @@ if ( ! class_exists( 'Uclient' ) ) {
 				'attributes' => array(
 					'readonly' => true,
 				),
-				'visible'    => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' )
+				'visible'    => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' ),
+				'class' => 'purchase_code'
+
 			);
 
 			$fields['license_key'] = array(
@@ -256,6 +259,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 				'attributes' => array(
 					'readonly' => true,
 				),
+                'class' => 'license_key'
 			);
 
 			$fields['license_status'] = array(
@@ -278,11 +282,11 @@ if ( ! class_exists( 'Uclient' ) ) {
 				'name'    => esc_html__( '&nbsp;', $text_domain ),
 				'save'    => false,
 				'type'    => 'button',
-				'std'     => esc_html__( 'Deatctivate', $text_domain ),
+				'std'     => esc_html__( 'Deativate', 'uschema' ),
+				'class'  => 'deactivate_license_key_button',
 				'visible' => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' ),
 				'after'   => '<span class="uclient-response-message"></span>'
 			);
-
 
 			return $fields;
 		}
@@ -298,7 +302,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 		 * @param $method   String  The API action to invoke on the license manager site
 		 * @param $params   array   The parameters for the API call
 		 *
-		 * @return          array   The API response
+		 * @return          object|boolean   The API response
 		 */
 
 
@@ -319,24 +323,19 @@ if ( ! class_exists( 'Uclient' ) ) {
 			$response_body = wp_remote_retrieve_body( $request );
 			$response      = (object) json_decode( $response_body, true );
 
-//			var_dump_pretty( $response );
-//			die();
 //			check to see if there is error in api call
 			if ( $this->is_api_error( $response ) ) {
 
 //		    If there is error, log error and return false
-
 				$this->log_error();
 				add_action( 'admin_notices', array( $this, 'show_admin_notices' ) );
-//				add_action( "after_plugin_row_{$this->plugin_slug}", array( $this, 'show_plugin_notices' ) ,11 , 2);
 				add_action( "in_plugin_update_message-{$this->plugin_slug}", array(
 					$this,
 					'show_plugin_notices_update'
 				), 10, 2 );
 
-//				return false;
+				return false;
 			}
-
 
 			return $response;
 		}
@@ -382,7 +381,6 @@ if ( ! class_exists( 'Uclient' ) ) {
 			$params = array(
 				'asset'   => $this->asset_identifier,
 				'license' => $this->license_key,
-//				'license_email'     => $this->license_email,
 				'domain'  => $_SERVER['SERVER_NAME']
 			);
 
@@ -392,48 +390,10 @@ if ( ! class_exists( 'Uclient' ) ) {
 
 			$license_info = $this->call_api( 'get', $params );
 
-//			var_dump( $license_info);
-//            die();
-
-			// Its not an error, so we can activate the license for the server
-			if ( $this->is_licence_pending( $license_info ) ) {
-
-				$license_activation_bool = $this->activate_pending_license( $params );
-
-				// if license activation is not done, we return false
-				if ( ! $license_activation_bool ) {
-					return false;
-				} else {
-					// Re-fetch the data from API after activating the license
-
-					$license_info = $this->call_api( 'get', $params );
-
-				}
-
-			}
-
-//			rao_var_dump( $license_info);
-
-
 			return $license_info;
 
 
 		}
-
-		private function activate_pending_license( $params ) {
-
-			$license_activation = $this->call_api( 'slm_activate', $params );
-
-//			var_dump( $license_activation );
-//			die();
-
-			if ( $license_activation->result === 'success' ) {
-				return true;
-			} else {
-				return false;
-			}
-		}
-
 
 		private function is_licence_pending( $license_info ) {
 
@@ -445,7 +405,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 
 
 //			TODO: Cache API response and then use afterwards
-//
+
 //          Try to get License info
 			$license_info = $this->get_license_info();
 
@@ -458,7 +418,6 @@ if ( ! class_exists( 'Uclient' ) ) {
 			$digital_asset = $license_info->digital_asset;
 
 			return (object) $digital_asset;
-
 
 		}
 
@@ -615,36 +574,6 @@ if ( ! class_exists( 'Uclient' ) ) {
 			return $res;
 		}
 
-		/**
-		 *
-		 */
-		public function show_plugin_notices( $currentPluginMetadata, $newPluginMetadata ) {
-			$wp_list_table = _get_list_table( 'WP_Plugins_List_Table' );
-
-			printf(
-				'<tr class="plugin-update-tr%s active" id="%s" data-slug="%s" data-plugin="%s">' .
-				'<td colspan="%s" class="plugin-update colspanchange">' .
-				'<div class="update-message notice inline %s notice-alt"><p>',
-				'',
-				esc_attr( $this->plugin_slug . '-update' ),
-				esc_attr( $this->plugin_slug ),
-				esc_attr( $this->plugin_slug ),
-				esc_attr( $wp_list_table->get_column_count() ),
-				'notice-error'
-			);
-
-			$format = __( "There was an error fetching the updates for <b>%s</b>, Details of error is <b>%s</b>. Please take necessary action to resolve it or contact the Plugin Author: %s at %s.", $this->get_text_domain() );
-			printf(
-				$format,
-				$this->get_plugin_data_attr( 'Name' ),
-				$this->get_api_error_text(),
-				$this->get_plugin_data_attr( 'Author' ),
-				$this->get_plugin_data_attr( 'AuthorURI' )
-			);
-
-			echo $format . '</p></div></td></tr>';
-
-		}
 
 		public function show_plugin_notices_update( $plugin_data, $response ) {
 
@@ -719,9 +648,9 @@ if ( ! class_exists( 'Uclient' ) ) {
 
 			//	TODO: Give the option to define the log option key, we may ask for it a instantiation of this class
 
-			$original_stored_log = get_option( 'slm_updater_api_error_log' );
+			$original_stored_log = get_option( 'uclient_updater_api_error_log' );
 
-			update_option( 'slm_updater_api_error_log', $original_stored_log . PHP_EOL . $message );
+			update_option( 'uclient_updater_api_error_log', $original_stored_log . PHP_EOL . $message );
 
 		}
 

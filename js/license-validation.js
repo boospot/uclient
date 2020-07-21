@@ -23,15 +23,44 @@ class UClient {
     }
 
     getVendor() {
-        return document.querySelector('input.license_source').value;
+        // try to get license_source for Metabox
+        let vendor = document.querySelector('.license_source select');
+        if (!vendor) {
+            vendor = document.querySelector('input.license_source');
+        }
+        if (vendor) {
+            return vendor.value;
+        }
     }
 
     getLicenseKey() {
-        return document.querySelector('input.license_key').value;
+
+        // try to get license_source for Metabox
+        let licenseKey = document.querySelector('.license_key input');
+
+        if (!licenseKey) {
+            licenseKey = document.querySelector('input.license_key');
+        }
+
+        if (licenseKey) {
+            return licenseKey.value;
+        }
+
     }
 
     getPurchaseCode(vendor) {
-        return document.querySelector(`input.${vendor}_key`).value;
+
+        // try to get license_source for Metabox
+        let purchaseCode = document.querySelector(`.${vendor}_key input`);
+
+        if (!purchaseCode) {
+            purchaseCode = document.querySelector(`input.${vendor}_key`);
+        }
+
+        if (purchaseCode) {
+            return purchaseCode.value;
+        }
+
     }
 
     getUIReady() {
@@ -127,6 +156,7 @@ class UClient {
                 console.log(response);
                 this.displayError(message)
                 this.enableButton(this.localizeVars.messages.deactivate);
+
             }
             console.log('Deactivation process complete');
 
@@ -134,6 +164,7 @@ class UClient {
             this.displayError(error);
             this.enableButton();
         }
+
     }
 
     updateLicenseDetails(licenseStatus, licenseKey, purchaseCode, envatoKey) {
@@ -141,7 +172,6 @@ class UClient {
         let changeEvent = new Event('change', {bubbles: true});
 
         const license_status_field = document.querySelector('input.license_status');
-        license_status_field.value = licenseStatus;
 
         if (license_status_field) {
             license_status_field.value = licenseStatus;
@@ -150,7 +180,6 @@ class UClient {
             license_status_field.dispatchEvent(changeEvent);
             console.log('license_status_field.dispatchEvent')
         }
-
 
 
         const license_key_field = document.getElementById('license_key');
@@ -171,7 +200,11 @@ class UClient {
             console.log('envato_key.value')
         }
 
-        const author_key = document.querySelector('input.author_key');
+        let author_key = document.querySelector('.author_key input');
+
+        if (!author_key) {
+            author_key.value = document.querySelector('input.author_key');
+        }
         if (author_key) {
             author_key.value = licenseKey;
         }
@@ -215,7 +248,6 @@ class UClient {
         }
 
         if (responseCont) {
-
             responseCont.innerHTML = '';
             responseCont.classList.remove('notice-success');
             responseCont.classList.remove('notice-error');
@@ -252,12 +284,21 @@ class UClient {
 
     bindEventHandlers() {
 
-        const activateButton = document.querySelector('.validate_purchase_code_button')[0];
+        let activateButton = document.querySelector('.validate_purchase_code_button button');
+
+        if (!activateButton) {
+            activateButton = document.querySelector('.validate_purchase_code_button');
+        }
+
         if (activateButton) {
             activateButton.addEventListener('click', this.validatePurchaseCode.bind(this));
         }
 
-        const deactivateButton = document.querySelector('.deactivate_license_key_button');
+        let deactivateButton = document.querySelector('.deactivate_license_key_button button');
+
+        if (!deactivateButton) {
+            deactivateButton = document.querySelector('.deactivate_license_key_button');
+        }
         if (deactivateButton) {
             deactivateButton.addEventListener('click', this.deactivateLicenseKey.bind(this));
         }
