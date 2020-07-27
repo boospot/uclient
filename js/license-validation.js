@@ -8,13 +8,13 @@ class UClient {
 
     disableButton() {
 
-        this.actionButton.disabled = true
+        this.actionButton.disabled    = true
         this.actionButton.textContent = this.localizeVars.messages.working;
 
     }
 
     enableButton(text = '') {
-        if (!text) {
+        if ( ! text) {
             text = this.localizeVars.messages.activate;
         }
         this.actionButton.disabled = false;
@@ -22,11 +22,16 @@ class UClient {
         this.actionButton.textContent = text;
     }
 
+    enableForceDeactivate() {
+        let deactivateButton = document.querySelector( '.force_deactivate_license_key_button' );
+        deactivateButton.classList.remove( 'hidden' );
+    }
+
     getVendor() {
         // try to get license_source for Metabox
-        let vendor = document.querySelector('.license_source select');
-        if (!vendor) {
-            vendor = document.querySelector('input.license_source');
+        let vendor = document.querySelector( '.license_source select' );
+        if ( ! vendor) {
+            vendor = document.querySelector( 'input.license_source' );
         }
         if (vendor) {
             return vendor.value;
@@ -36,10 +41,10 @@ class UClient {
     getLicenseKey() {
 
         // try to get license_source for Metabox
-        let licenseKey = document.querySelector('.license_key input');
+        let licenseKey = document.querySelector( '.license_key input' );
 
-        if (!licenseKey) {
-            licenseKey = document.querySelector('input.license_key');
+        if ( ! licenseKey) {
+            licenseKey = document.querySelector( 'input.license_key' );
         }
 
         if (licenseKey) {
@@ -51,10 +56,10 @@ class UClient {
     getPurchaseCode(vendor) {
 
         // try to get license_source for Metabox
-        let purchaseCode = document.querySelector(`.${vendor}_key input`);
+        let purchaseCode = document.querySelector( `.${vendor}_key input` );
 
-        if (!purchaseCode) {
-            purchaseCode = document.querySelector(`input.${vendor}_key`);
+        if ( ! purchaseCode) {
+            purchaseCode = document.querySelector( `input.${vendor}_key` );
         }
 
         if (purchaseCode) {
@@ -65,7 +70,7 @@ class UClient {
 
     getUIReady() {
         this.disableButton();
-        this.displayMessage(this.localizeVars.messages.working);
+        this.displayMessage( this.localizeVars.messages.working );
 
         // Clear the previous messages
         this.clearResponse();
@@ -73,24 +78,24 @@ class UClient {
 
     async validatePurchaseCode(event) {
 
-        console.log('Validating Purchase');
+        console.log( 'Validating Purchase' );
 
         this.actionButton = event.target;
 
         this.getUIReady();
 
         const vendor = this.getVendor();
-        console.log(vendor);
-        if (!vendor) {
-            this.displayError(this.localizeVars.messages.select_vendor);
+        console.log( vendor );
+        if ( ! vendor) {
+            this.displayError( this.localizeVars.messages.select_vendor );
             this.enableButton();
             return;
         }
 
-        const purchaseCode = this.getPurchaseCode(vendor);
-        console.log(purchaseCode);
-        if (!purchaseCode) {
-            this.displayError(this.localizeVars.messages.provide_purchase_code);
+        const purchaseCode = this.getPurchaseCode( vendor );
+        console.log( purchaseCode );
+        if ( ! purchaseCode) {
+            this.displayError( this.localizeVars.messages.provide_purchase_code );
             this.enableButton();
             return;
         }
@@ -99,125 +104,136 @@ class UClient {
 
         // Do Ajax
         try {
-            const response = await this.callLicenseActivationApi(purchaseCode, vendor, assetIdentifier);
+            const response = await this.callLicenseActivationApi( purchaseCode, vendor, assetIdentifier );
 
             let message = response.message;
 
             if (response.success) {
-                this.displaySuccess(message)
-                this.updateLicenseDetails('active', response.license.license_key, purchaseCode, purchaseCode);
+                this.displaySuccess( message )
+                this.updateLicenseDetails( 'active', response.license.license_key, purchaseCode, purchaseCode );
 
             } else {
                 message = message + ' ' + this.localizeVars.additionalToErrorMessage;
 
-                console.log(response); // We need to log it for viewership
-                this.displayError(message)
+                console.log( response ); // We need to log it for viewership
+                this.displayError( message )
                 this.enableButton();
             }
 
-            console.log('Validation process complete');
+            console.log( 'Validation process complete' );
 
         } catch (error) {
-            this.displayError(error);
+            this.displayError( error );
             this.enableButton();
         }
 
     }
 
 
-    async deactivateLicenseKey(event) {
+    forceDeactivateLicenseKey(event) {
 
-        console.log('Deactivating License Key');
+        console.log( 'Force Deactivating License Key' );
 
         this.actionButton = event.target;
         this.getUIReady();
 
+        this.updateLicenseDetails( '', '', '', '' );
+
+    }
+
+    async deactivateLicenseKey(event) {
+
+        console.log( 'Deactivating License Key' );
+
+        this.actionButton = event.target;
+        this.getUIReady();
 
         const licenseKey = this.getLicenseKey();
-        if (!licenseKey) {
-            this.displayError(this.localizeVars.messages.provide_license_key);
+        if ( ! licenseKey) {
+            this.displayError( this.localizeVars.messages.provide_license_key );
             this.enableButton();
             return;
         }
 
         // Do Ajax
         try {
-            const response = await this.callLicenseDeactivationApi(licenseKey);
+            const response = await this.callLicenseDeactivationApi( licenseKey );
 
             let message = response.message;
 
             if (response.success) {
-                this.displaySuccess(message)
-                this.updateLicenseDetails('', '', '', '');
+                this.displaySuccess( message )
+                this.updateLicenseDetails( '', '', '', '' );
 
             } else {
                 message = message + ' ' + this.localizeVars.additionalToErrorMessage;
 
-                console.log(response);
-                this.displayError(message)
-                this.enableButton(this.localizeVars.messages.deactivate);
+                console.log( response );
+                this.displayError( message )
+                this.enableButton( this.localizeVars.messages.deactivate );
+                this.enableForceDeactivate();
 
             }
-            console.log('Deactivation process complete');
+            console.log( 'Deactivation process complete' );
 
         } catch (error) {
-            this.displayError(error);
+            this.displayError( error );
             this.enableButton();
+            this.enableForceDeactivate();
         }
 
     }
 
     updateLicenseDetails(licenseStatus, licenseKey, purchaseCode, envatoKey) {
 
-        let changeEvent = new Event('change', {bubbles: true});
+        let changeEvent = new Event( 'change', {bubbles: true} );
 
-        const license_status_field = document.querySelector('input.license_status');
+        const license_status_field = document.querySelector( 'input.license_status' );
 
         if (license_status_field) {
             license_status_field.value = licenseStatus;
-            console.log('license_status_field.value')
+            console.log( 'license_status_field.value' )
 
-            license_status_field.dispatchEvent(changeEvent);
-            console.log('license_status_field.dispatchEvent')
+            license_status_field.dispatchEvent( changeEvent );
+            console.log( 'license_status_field.dispatchEvent' )
         }
 
-
-        const license_key_field = document.getElementById('license_key');
+        const license_key_field = document.getElementById( 'license_key' );
         if (license_key_field) {
             license_key_field.value = licenseKey;
-            console.log('license_key_field.value')
+            console.log( 'license_key_field.value' )
         }
 
-        const purchase_code_field = document.getElementById('purchase_code');
+        const purchase_code_field = document.getElementById( 'purchase_code' );
         if (purchase_code_field) {
             purchase_code_field.value = purchaseCode;
-            console.log('purchase_code_field.value')
+            console.log( 'purchase_code_field.value' )
         }
 
-        const envato_key = document.getElementById('envato_key');
+        const envato_key = document.getElementById( 'envato_key' );
         if (envato_key) {
             envato_key.value = envatoKey;
-            console.log('envato_key.value')
+            console.log( 'envato_key.value' )
         }
 
-        let author_key = document.querySelector('.author_key input');
+        let author_key = document.querySelector( '.author_key input' );
 
-        if (!author_key) {
-            author_key.value = document.querySelector('input.author_key');
+        if ( ! author_key) {
+            author_key.value = document.querySelector( 'input.author_key' );
         }
         if (author_key) {
             author_key.value = licenseKey;
         }
 
-        jQuery('#submit').trigger('click');
+        jQuery( '#submit' ).trigger( 'click' );
 
     }
 
     async callLicenseActivationApi(key, vendor, assetIdentifier) {
 
-        const apiUrl = `${this.localizeVars.apiEndPoint}validate?key=${key}&vendor=${vendor}&asset=${assetIdentifier}&domain=${window.location.hostname}`;
+        const apiUrl = `${this.localizeVars.apiEndPoint}validate ? key = ${key} & vendor = ${vendor} & asset = ${assetIdentifier} & domain = ${window.location.hostname}`;
 
-        const result = await fetch(apiUrl);
+        const result = await fetch( apiUrl );
 
         return await result.json();
 
@@ -226,9 +242,9 @@ class UClient {
 
     async callLicenseDeactivationApi(license) {
 
-        const apiUrl = `${this.localizeVars.apiEndPoint}deactivate?license=${license}&domain=${encodeURI(window.location.hostname)}`;
+        const apiUrl = `${this.localizeVars.apiEndPoint}deactivate ? license = ${license} & domain = ${encodeURI( window.location.hostname )}`;
 
-        const result = await fetch(apiUrl);
+        const result = await fetch( apiUrl );
 
         return await result.json();
 
@@ -241,17 +257,17 @@ class UClient {
 
     getResponseContainer() {
 
-        let responseCont = document.querySelector('span.uclient-response-message')
+        let responseCont = document.querySelector( 'span.uclient-response-message' )
 
-        if (!responseCont) {
+        if ( ! responseCont) {
             responseCont = this.actionButton.parentNode.parentNode.nextElementSibling;
         }
 
         if (responseCont) {
             responseCont.innerHTML = '';
-            responseCont.classList.remove('notice-success');
-            responseCont.classList.remove('notice-error');
-            responseCont.classList.add('notice');
+            responseCont.classList.remove( 'notice-success' );
+            responseCont.classList.remove( 'notice-error' );
+            responseCont.classList.add( 'notice' );
         }
         return responseCont;
     }
@@ -259,7 +275,7 @@ class UClient {
     displaySuccess(message) {
         const responseCont = this.getResponseContainer();
 
-        responseCont.classList.add('notice-success');
+        responseCont.classList.add( 'notice-success' );
         responseCont.innerHTML = message;
 
     }
@@ -267,7 +283,7 @@ class UClient {
     displayError(message) {
         const responseCont = this.getResponseContainer();
         if (responseCont) {
-            responseCont.classList.add('notice-error');
+            responseCont.classList.add( 'notice-error' );
             responseCont.innerHTML = message;
         }
 
@@ -284,30 +300,39 @@ class UClient {
 
     bindEventHandlers() {
 
-        let activateButton = document.querySelector('.validate_purchase_code_button button');
+        let activateButton = document.querySelector( '.validate_purchase_code_button button' );
 
-        if (!activateButton) {
-            activateButton = document.querySelector('.validate_purchase_code_button');
+        if ( ! activateButton) {
+            activateButton = document.querySelector( '.validate_purchase_code_button' );
         }
 
         if (activateButton) {
-            activateButton.addEventListener('click', this.validatePurchaseCode.bind(this));
+            activateButton.addEventListener( 'click', this.validatePurchaseCode.bind( this ) );
         }
 
-        let deactivateButton = document.querySelector('.deactivate_license_key_button button');
+        let deactivateButton = document.querySelector( '.deactivate_license_key_button button' );
 
-        if (!deactivateButton) {
-            deactivateButton = document.querySelector('.deactivate_license_key_button');
+        if ( ! deactivateButton) {
+            deactivateButton = document.querySelector( '.deactivate_license_key_button' );
         }
         if (deactivateButton) {
-            deactivateButton.addEventListener('click', this.deactivateLicenseKey.bind(this));
+            deactivateButton.addEventListener( 'click', this.deactivateLicenseKey.bind( this ) );
+        }
+
+        let forceDeactivateButton = document.querySelector( '.force_deactivate_license_key_button button' );
+
+        if ( ! forceDeactivateButton) {
+            forceDeactivateButton = document.querySelector( '.force_deactivate_license_key_button' );
+        }
+        if (forceDeactivateButton) {
+            forceDeactivateButton.addEventListener( 'click', this.forceDeactivateLicenseKey.bind( this ) );
         }
 
     }
 
 
     init() {
-        console.log('Application started');
+        console.log( 'Application started' );
 
         this.bindEventHandlers();
 
@@ -318,12 +343,13 @@ class UClient {
 
 (function ($) {
     'use strict';
-    $(document).ready(function () {
+    $( document ).ready(
+        function () {
 
-        const uclient = new UClient($);
-        uclient.init();
+            const uclient = new UClient( $ );
+            uclient.init();
 
-    });
+        }
+    );
 
-
-})(jQuery);
+})( jQuery );
