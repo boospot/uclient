@@ -7,8 +7,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 
 if ( ! class_exists( 'Uclient' ) ) {
-
 	class Uclient {
+
+
 		/**
 		 * The API endpoint. Configured through the class's constructor.
 		 *
@@ -18,14 +19,8 @@ if ( ! class_exists( 'Uclient' ) ) {
 
 		private $version = 1.0;
 
-		/**
-		 * @var string secret key from SLM License Server
-		 */
-		private $secret_key;
-
 		private $license_key;
 
-		private $license_email;
 
 
 		/**
@@ -48,16 +43,23 @@ if ( ! class_exists( 'Uclient' ) ) {
 
 		private $error_message;
 
+		private $asset_identifier;
+
+		private $plugin_settings_page_hook;
+
+		private $additional_to_error_message;
+
 
 		/**
 		 * Initializes the license manager client.
 		 *
-		 * @param $product_id   string  The text id (slug) of the product on the license manager site
-		 * @param $product_name string  The name of the product, used for menus
-		 * @param $text_domain  string  Theme / plugin text domain, used for localizing the settings screens.
-		 * @param $api_url      string  The URL to the license manager API (your license server)
+		 * @param $api_endpoint
+		 * @param $license_key
+		 * @param $asset_identifier
 		 * @param $type         string  The type of project this class is being used in ('theme' or 'plugin')
 		 * @param $plugin_file  string  The full path to the plugin's main file (only for plugins)
+		 * @param string                                                                                     $plugin_settings_page_hook
+		 * @param string                                                                                     $additional_to_error_message
 		 */
 
 		public function __construct(
@@ -70,10 +72,10 @@ if ( ! class_exists( 'Uclient' ) ) {
 			$additional_to_error_message = ''
 		) {
 
-
 			// This is for testing only!
-			set_site_transient( 'update_plugins', null );
-
+			if ( defined( 'UCLIENT_DEV_SETUP' ) && UCLIENT_DEV_SETUP ) {
+				set_site_transient( 'update_plugins', null );
+			}
 
 			// Store setup data
 			$this->api_endpoint                = trailingslashit( esc_url_raw( $api_endpoint ) );
@@ -85,7 +87,6 @@ if ( ! class_exists( 'Uclient' ) ) {
 			$this->plugin_settings_page_hook   = $plugin_settings_page_hook;
 			$this->additional_to_error_message = $additional_to_error_message;
 
-
 			if ( $type === 'theme' ) {
 				// Check for updates (for themes)
 				add_filter( 'pre_set_site_transient_update_themes', array( $this, 'check_for_update' ) );
@@ -94,19 +95,18 @@ if ( ! class_exists( 'Uclient' ) ) {
 				add_filter( 'pre_set_site_transient_update_plugins', array( $this, 'check_for_update' ) );
 				// Showing plugin information
 				add_filter( 'plugins_api', array( $this, 'plugins_api_handler' ), 10, 3 );
-
 			}
 
 			add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_scripts' ) );
-
 		}
 
 
 		/**
 		 * Admin enqueue scripts for license validation fields and ajax
+		 *
+		 * @param $hook
 		 */
 		public function admin_enqueue_scripts( $hook ) {
-
 			if ( empty( $this->plugin_settings_page_hook ) ) {
 				echo '<script>console.info("admin_page_hook: ' . $hook . '")</script>';
 			}
@@ -138,22 +138,20 @@ if ( ! class_exists( 'Uclient' ) ) {
 							'deactivate'            => 'Deactivate',
 							'select_vendor'         => 'Please select a fucking vendor',
 							'provide_purchase_code' => 'Please provide valid purchase code',
-							'provide_license_key'   => 'Please provide license key.'
-						)
+							'provide_license_key'   => 'Please provide license key.',
+						),
 					)
 				)
 			);
-
 		}
 
 		public function get_text_domain() {
 			switch ( $this->type ) {
-				case( 'plugin' ):
-
+				case ( 'plugin' ):
 					return $this->get_plugin_data_attr( 'TextDomain' );
 					break;
 
-				case( 'theme' ):
+				case ( 'theme' ):
 					// it is a theme
 
 					$my_theme = wp_get_theme();
@@ -165,19 +163,17 @@ if ( ! class_exists( 'Uclient' ) ) {
 					break;
 
 				default:
-//                    it is not a theme or plugin, i don't know what it might be ;)
+					// it is not a theme or plugin, i don't know what it might be ;)
 					return false;
 			}
 		}
 
 		/**
-		 * @param string $license_key acquired from the site options
 		 * @param string $text_domain
 		 *
 		 * @return array
 		 */
 		public static function get_license_activation_fields_metabox( $text_domain = '' ) {
-
 			$fields = array();
 
 			$fields['license_source'] = array(
@@ -191,9 +187,8 @@ if ( ! class_exists( 'Uclient' ) ) {
 				),
 				'std'     => 'envato',
 				'class'   => 'license_source',
-				'hidden'  => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' )
+				'hidden'  => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' ),
 			);
-
 
 			$fields['envato_key'] = array(
 				'id'      => 'envato_key',
@@ -221,20 +216,19 @@ if ( ! class_exists( 'Uclient' ) ) {
 				'class'  => 'validate_purchase_code_button',
 				'std'    => esc_html__( 'Activate', $text_domain ),
 				'hidden' => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' ),
-				'after'  => '<span class="uclient-response-message"></span>'
+				'after'  => '<span class="uclient-response-message"></span>',
 			);
 
 			$fields[] = array(
 				'type'   => 'divider',
-				'hidden' => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' )
+				'hidden' => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' ),
 			);
-
 
 			$fields['license_heading'] = array(
 				'type'       => 'custom_html',
 				'std'        => '<h3>' . esc_html__( 'License Details', $text_domain ) . '</h3>',
 				'save_field' => false,
-				'visible'    => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' )
+				'visible'    => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' ),
 			);
 
 			$fields['purchase_code'] = array(
@@ -246,7 +240,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 					'readonly' => true,
 				),
 				'visible'    => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' ),
-				'class' => 'purchase_code'
+				'class'      => 'purchase_code',
 
 			);
 
@@ -259,7 +253,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 				'attributes' => array(
 					'readonly' => true,
 				),
-                'class' => 'license_key'
+				'class'      => 'license_key',
 			);
 
 			$fields['license_status'] = array(
@@ -274,7 +268,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 				'name'       => esc_html__( 'License Status', $text_domain ),
 				'desc'       => '<span style="font-size:1.5em; color:green;">' . esc_html__( 'Active', $text_domain ) . '</span>',
 				'save_field' => false,
-				'visible'    => array( 'license_status', '=', 'active' )
+				'visible'    => array( 'license_status', '=', 'active' ),
 			);
 
 			$fields['deactivate_license_key_button'] = array(
@@ -282,10 +276,19 @@ if ( ! class_exists( 'Uclient' ) ) {
 				'name'    => esc_html__( '&nbsp;', $text_domain ),
 				'save'    => false,
 				'type'    => 'button',
-				'std'     => esc_html__( 'Deativate', 'uschema' ),
-				'class'  => 'deactivate_license_key_button',
+				'std'     => esc_html__( 'Deactivate', $text_domain ),
+				'class'   => 'deactivate_license_key_button',
 				'visible' => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' ),
-				'after'   => '<span class="uclient-response-message"></span>'
+				'after'   => '<span class="uclient-response-message"></span>',
+			);
+
+			$fields['force_deactivate_license_key_button'] = array(
+				'id'    => 'force_deactivate_license_key_button',
+				'name'  => esc_html__( '&nbsp;', $text_domain ),
+				'save'  => false,
+				'type'  => 'button',
+				'std'   => esc_html__( 'Force Deactivate', $text_domain ),
+				'class' => 'force_deactivate_license_key_button hidden',
 			);
 
 			return $fields;
@@ -299,7 +302,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 		/**
 		 * Makes a call to the WP License Manager API.
 		 *
-		 * @param $method   String  The API action to invoke on the license manager site
+		 * @param $action
 		 * @param $params   array   The parameters for the API call
 		 *
 		 * @return          object|boolean   The API response
@@ -315,7 +318,6 @@ if ( ! class_exists( 'Uclient' ) ) {
 			// Send the request
 			$request = wp_remote_get( $url );
 
-
 			if ( is_wp_error( $request ) ) {
 				return false;
 			}
@@ -323,16 +325,21 @@ if ( ! class_exists( 'Uclient' ) ) {
 			$response_body = wp_remote_retrieve_body( $request );
 			$response      = (object) json_decode( $response_body, true );
 
-//			check to see if there is error in api call
+			// check to see if there is error in api call
 			if ( $this->is_api_error( $response ) ) {
 
-//		    If there is error, log error and return false
+				// If there is error, log error and return false
 				$this->log_error();
 				add_action( 'admin_notices', array( $this, 'show_admin_notices' ) );
-				add_action( "in_plugin_update_message-{$this->plugin_slug}", array(
-					$this,
-					'show_plugin_notices_update'
-				), 10, 2 );
+				add_action(
+					"in_plugin_update_message-{$this->plugin_slug}",
+					array(
+						$this,
+						'show_plugin_notices_update',
+					),
+					10,
+					2
+				);
 
 				return false;
 			}
@@ -352,14 +359,12 @@ if ( ! class_exists( 'Uclient' ) ) {
 				return true;
 			}
 
-
 			if ( ! is_object( $response ) ) {
 				return true;
 			}
 
-
 			if ( isset( $response->error ) && $response->error ) {
-//				rao_var_dump( $response);
+				// rao_var_dump( $response);
 
 				$this->error_code    = $response->message_code;
 				$this->error_message = $response->message;
@@ -377,36 +382,29 @@ if ( ! class_exists( 'Uclient' ) ) {
 		 * @return object|bool   The product data, or false if API call fails.
 		 */
 		public function get_license_info() {
-
 			$params = array(
 				'asset'   => $this->asset_identifier,
 				'license' => $this->license_key,
-				'domain'  => $_SERVER['SERVER_NAME']
+				'domain'  => $_SERVER['SERVER_NAME'],
 			);
 
 			/*
 			 * Call to API
 			 */
 
-			$license_info = $this->call_api( 'get', $params );
-
-			return $license_info;
-
-
+			return $this->call_api( 'get', $params );
 		}
 
 		private function is_licence_pending( $license_info ) {
-
-			return ( isset( $license_info->status ) && $license_info->status === 'pending' ) ? true : false;
+			return isset( $license_info->status ) && $license_info->status === 'pending';
 		}
 
 
 		public function get_digital_asset_info() {
 
+			// TODO: Cache API response and then use afterwards
 
-//			TODO: Cache API response and then use afterwards
-
-//          Try to get License info
+			// Try to get License info
 			$license_info = $this->get_license_info();
 
 			// If we did not receive the digital asst related info, bail-out
@@ -418,17 +416,15 @@ if ( ! class_exists( 'Uclient' ) ) {
 			$digital_asset = $license_info->digital_asset;
 
 			return (object) $digital_asset;
-
 		}
 
 		/**
 		 * Checks the license manager to see if there is an update available for this theme.
 		 *
+		 * @param $digital_asset
 		 * @return bool  Check to see if digital_asset information is received and if so, return the bool by checking version numbers
 		 */
 		public function is_update_available( $digital_asset ) {
-
-
 			if ( ! version_compare( $digital_asset->version, $this->get_local_version(), '>' ) ) {
 				return false;
 			}
@@ -445,32 +441,32 @@ if ( ! class_exists( 'Uclient' ) ) {
 
 				return $theme_data->Version;
 			} else {
-//				$plugin_data = get_plugin_data( $this->plugin_file, false );
+				// $plugin_data = get_plugin_data( $this->plugin_file, false );
 				return $this->get_plugin_data_attr( 'Version' );
 			}
 		}
 
 
+		/** @noinspection SpellCheckingInspection */
 		private function get_plugin_data_attr( $attr ) {
 
-//			https://developer.wordpress.org/reference/functions/get_plugin_data/
-//            Available Attributes
-//		  'Name' => 'Plugin Name',
-//        'PluginURI' => 'Plugin URI',
-//        'Version' => 'Version',
-//        'Description' => 'Description',
-//        'Author' => 'Author',
-//        'AuthorURI' => 'Author URI',
-//        'TextDomain' => 'Text Domain',
-//        'DomainPath' => 'Domain Path',
-//        'Network' => 'Network',
-//        // Site Wide Only is deprecated in favor of Network.
-//        '_sitewide' => 'Site Wide Only',
+			// https://developer.wordpress.org/reference/functions/get_plugin_data/
+			// Available Attributes
+			// 'Name' => 'Plugin Name',
+			// 'PluginURI' => 'Plugin URI',
+			// 'Version' => 'Version',
+			// 'Description' => 'Description',
+			// 'Author' => 'Author',
+			// 'AuthorURI' => 'Author URI',
+			// 'TextDomain' => 'Text Domain',
+			// 'DomainPath' => 'Domain Path',
+			// 'Network' => 'Network',
+			// Site Wide Only is deprecated in favor of Network.
+			// '_sitewide' => 'Site Wide Only',
 
 			$plugin_data = get_plugin_data( $this->plugin_file, false );
 
 			return $plugin_data[ $attr ];
-
 		}
 
 
@@ -495,20 +491,16 @@ if ( ! class_exists( 'Uclient' ) ) {
 
 			$digital_asset = $this->get_digital_asset_info(); // return false if license not valid
 
+			/** @noinspection PhpStatementHasEmptyBodyInspection */
 			if ( ! $digital_asset ) {
-//
-//      	    TODO: Feature: show admin notice that license is not valid or any other error
-
-
+				//
+				// TODO: Feature: show admin notice that license is not valid or any other error
 			}
 
-
-//			Only work if we have digital_asset available
-//			Check if Update available, if not, bail out and return $transient
+			// Only work if we have digital_asset available
+			// Check if Update available, if not, bail out and return $transient
 
 			if ( $digital_asset && $this->is_update_available( $digital_asset ) ) {
-
-
 				if ( $this->is_theme() ) {
 					// Theme update
 					$theme_data = wp_get_theme();
@@ -517,7 +509,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 					$transient->response[ $theme_slug ] = array(
 						'new_version' => $digital_asset->version,
 						'package'     => $digital_asset->download_url,
-						'url'         => $digital_asset->homepage
+						'url'         => $digital_asset->homepage,
 					);
 				} else {
 					// Plugin updates will be added here.
@@ -526,7 +518,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 					$transient->response[ $plugin_slug ] = (object) array(
 						'new_version' => $digital_asset->version,
 						'package'     => $digital_asset->download_url,
-						'slug'        => $plugin_slug
+						'slug'        => $plugin_slug,
 					);
 				}
 			}
@@ -549,7 +541,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 		 * @return object   The API response.
 		 */
 		public function plugins_api_handler( $res, $action, $args ) {
-//			rao_var_dump( $res);
+			// rao_var_dump( $res);
 			if ( $action == 'plugin_information' ) {
 
 				// If the request is for this plugin, respond to it
@@ -562,11 +554,10 @@ if ( ! class_exists( 'Uclient' ) ) {
 					}
 
 					// Insert the 'slug' from $args into the returned api response.
-					// If we don do this, wordpress so not understand for which plugin the data was retrieved.
+					// If we don do this, WordPress so not understand for which plugin the data was retrieved.
 					$info = (object) array_merge( (array) $info, array( 'slug' => $args->slug ) );
 
 					return $info;
-
 				}
 			}
 
@@ -576,32 +567,28 @@ if ( ! class_exists( 'Uclient' ) ) {
 
 
 		public function show_plugin_notices_update( $plugin_data, $response ) {
-
 			echo '</p></div><div class="update-message notice inline notice-error notice-alt"><p>';
-			$format = __( "There was an error fetching the updates for <b>%s</b>, Details of error is <b>%s</b>. Please contact plugin author with the error specified.", $this->get_text_domain() );
+			$format = __( 'There was an error fetching the updates for <b>%1$s</b>, Details of error is <b>%2$s</b>. Please contact plugin author with the error specified.', $this->get_text_domain() );
 			printf(
 				$format,
 				$this->get_plugin_data_attr( 'Name' ),
 				$this->get_api_error_text()
 			);
-
 		}
 
 
 		public function show_admin_notices() {
-
 			?>
             <div class="notice notice-error is-dismissible">
                 <p>
 					<?php
 
-					$format = __( "There was an error fetching the updates for <b>%s</b>, Details of error is <b>%s</b>. Please contact plugin author with the error specified.", $this->get_text_domain() );
+					$format = __( 'There was an error fetching the updates for <b>%1$s</b>, Details of error is <b>%2$s</b>. Please contact plugin author with the error specified.', $this->get_text_domain() );
 					printf(
 						$format,
 						$this->get_plugin_data_attr( 'Name' ),
 						$this->get_api_error_text()
 					);
-
 					?>
                 </p>
 
@@ -610,7 +597,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 		}
 
 		private function get_api_error_text() {
-			return $this->error_message . " [" . $this->error_code . "]";
+			return $this->error_message . ' [' . $this->error_code . ']';
 		}
 
 
@@ -621,7 +608,6 @@ if ( ! class_exists( 'Uclient' ) ) {
 		 * @param string $level
 		 */
 		private function log_error( $text = '', $level = 'i' ) {
-
 			if ( empty( $text ) ) {
 				$text = $this->get_api_error_text();
 			}
@@ -643,17 +629,13 @@ if ( ! class_exists( 'Uclient' ) ) {
 					$level = 'INFO';
 			}
 
-			$message = date( "[Y-m-d H:i:s]" ) . "\t[" . $level . "]\t[" . basename( __FILE__ ) . "]\t" . $text . "\n";
+			$message = date( '[Y-m-d H:i:s]' ) . "\t[" . $level . "]\t[" . basename( __FILE__ ) . "]\t" . $text . "\n";
 
-
-			//	TODO: Give the option to define the log option key, we may ask for it a instantiation of this class
+			// TODO: Give the option to define the log option key, we may ask for it a instantiation of this class
 
 			$original_stored_log = get_option( 'uclient_updater_api_error_log' );
 
 			update_option( 'uclient_updater_api_error_log', $original_stored_log . PHP_EOL . $message );
-
 		}
-
-
 	}
 }
