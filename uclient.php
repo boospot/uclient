@@ -17,7 +17,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 		 */
 		private $api_endpoint;
 
-		private $version = 1.0;
+		private $version = 1.1;
 
 		private $license_key;
 
@@ -182,8 +182,8 @@ if ( ! class_exists( 'Uclient' ) ) {
 				'type'    => 'select',
 				'options' => array(
 					''       => '--' . esc_html__( 'Please select', $text_domain ) . '--',
-					'envato' => esc_html__( 'Envato', $text_domain ),
 					'author' => esc_html__( 'Plugin Author', $text_domain ),
+					'envato' => esc_html__( 'Envato', $text_domain ),
 				),
 				'std'     => 'envato',
 				'class'   => 'license_source',
