@@ -17,7 +17,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 		 */
 		private $api_endpoint;
 
-		private $version = 1.1;
+		private $version = 1.2;
 
 		private $license_key;
 
@@ -185,7 +185,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 					'author' => esc_html__( 'Plugin Author', $text_domain ),
 					'envato' => esc_html__( 'Envato', $text_domain ),
 				),
-				'std'     => 'envato',
+				'std'     => 'author',
 				'class'   => 'license_source',
 				'hidden'  => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' ),
 			);
