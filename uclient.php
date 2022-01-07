@@ -17,10 +17,11 @@ if ( ! class_exists( 'Uclient' ) ) {
 		 */
 		private $api_endpoint;
 
+		private $api_version;
+
 		private $version = 1.2;
 
 		private $license_key;
-
 
 
 		/**
@@ -58,8 +59,8 @@ if ( ! class_exists( 'Uclient' ) ) {
 		 * @param $asset_identifier
 		 * @param $type         string  The type of project this class is being used in ('theme' or 'plugin')
 		 * @param $plugin_file  string  The full path to the plugin's main file (only for plugins)
-		 * @param string                                                                                     $plugin_settings_page_hook
-		 * @param string                                                                                     $additional_to_error_message
+		 * @param $plugin_settings_page_hook string
+		 * @param $additional_to_error_message string
 		 */
 
 		public function __construct(
@@ -86,6 +87,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 			$this->plugin_slug                 = plugin_basename( $this->plugin_file );
 			$this->plugin_settings_page_hook   = $plugin_settings_page_hook;
 			$this->additional_to_error_message = $additional_to_error_message;
+			$this->set_api_version();
 
 			if ( $type === 'theme' ) {
 				// Check for updates (for themes)
@@ -100,6 +102,18 @@ if ( ! class_exists( 'Uclient' ) ) {
 			add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_scripts' ) );
 		}
 
+		/**
+		 *
+		 */
+		public function set_api_version() {
+
+			if ( strpos( $this->api_endpoint, 'ulicense/v2/plugins' ) !== false ) {
+				$this->api_version = 'v2';
+			} else {
+				$this->api_version = 'v1';
+			}
+
+		}
 
 		/**
 		 * Admin enqueue scripts for license validation fields and ajax
@@ -382,17 +396,28 @@ if ( ! class_exists( 'Uclient' ) ) {
 		 * @return object|bool   The product data, or false if API call fails.
 		 */
 		public function get_license_info() {
-			$params = array(
-				'asset'   => $this->asset_identifier,
-				'license' => $this->license_key,
-				'domain'  => $_SERVER['SERVER_NAME'],
-			);
+
+			if ( 'v2' === $this->api_version ) {
+				$action = ''; // no action
+				$params = array(
+					'asset'  => $this->asset_identifier,
+					'key'    => $this->license_key,
+					'domain' => $_SERVER['SERVER_NAME'],
+				);
+			} else {
+				$action = 'get';
+				$params = array(
+					'asset'   => $this->asset_identifier,
+					'license' => $this->license_key,
+					'domain'  => $_SERVER['SERVER_NAME'],
+				);
+			}
 
 			/*
 			 * Call to API
 			 */
 
-			return $this->call_api( 'get', $params );
+			return $this->call_api( $action, $params );
 		}
 
 		private function is_licence_pending( $license_info ) {
@@ -422,6 +447,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 		 * Checks the license manager to see if there is an update available for this theme.
 		 *
 		 * @param $digital_asset
+		 *
 		 * @return bool  Check to see if digital_asset information is received and if so, return the bool by checking version numbers
 		 */
 		public function is_update_available( $digital_asset ) {
