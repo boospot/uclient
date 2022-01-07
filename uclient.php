@@ -19,7 +19,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 
 		private $api_version;
 
-		private $version = 1.2;
+		private $version = 1.3;
 
 		private $license_key;
 
