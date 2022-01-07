@@ -129,9 +129,14 @@ if ( ! class_exists( 'Uclient' ) ) {
 				return;
 			}
 
+			if ( 'v2' === $this->api_version ) {
+				$js_file_name = 'license-validation-v2.js';
+			} else {
+				$js_file_name = 'license-validation.js';
+			}
 			wp_enqueue_script(
 				'uclient-license-validation',
-				plugin_dir_url( __FILE__ ) . 'js/license-validation.js',
+				plugin_dir_url( __FILE__ ) . 'js/' . $js_file_name,
 				array( 'jquery' ),
 				$this->version,
 				true
@@ -150,7 +155,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 							'working'               => 'Working',
 							'activate'              => 'Activate',
 							'deactivate'            => 'Deactivate',
-							'select_vendor'         => 'Please select a fucking vendor',
+							'select_vendor'         => 'Please select a vendor',
 							'provide_purchase_code' => 'Please provide valid purchase code',
 							'provide_license_key'   => 'Please provide license key.',
 						),
