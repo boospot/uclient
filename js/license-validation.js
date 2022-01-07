@@ -348,7 +348,7 @@ class UClient {
 
 
     init() {
-        console.log('Application started');
+        console.log('uLicense api version 1');
 
         this.bindEventHandlers();
 

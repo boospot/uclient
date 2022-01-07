@@ -240,9 +240,9 @@ class UClient {
 
         const paramString = new URLSearchParams(param).toString()
 
-        const apiUrl = `${this.localizeVars.apiEndPoint}validate?` + paramString;
+        const apiUrl = `${this.localizeVars.apiEndPoint}?` + paramString;
 
-        const result = await fetch(apiUrl);
+        const result = await fetch(apiUrl, {method: 'POST'});
 
         return await result.json();
 
@@ -252,15 +252,18 @@ class UClient {
     async callLicenseDeactivationApi(license) {
 
         const param = {
-            license: license,
+            key: license,
             domain: window.location.hostname
         };
 
         const paramString = new URLSearchParams(param).toString()
 
-        const apiUrl = `${this.localizeVars.apiEndPoint}deactivate?` + paramString;
+        const apiUrl = `${this.localizeVars.apiEndPoint}?` + paramString;
+        console.log('making Deactivate Request');
 
-        const result = await fetch(apiUrl);
+        const result = await fetch(apiUrl, {
+            method: 'DELETE'
+        });
 
         return await result.json();
 
@@ -348,7 +351,7 @@ class UClient {
 
 
     init() {
-        console.log('Application started');
+        console.log('uLicense api version 2');
 
         this.bindEventHandlers();
 
