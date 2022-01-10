@@ -19,7 +19,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 
 		private $api_version;
 
-		private $version = 1.4;
+		private $version = 1.5;
 
 		private $license_key;
 
@@ -210,21 +210,29 @@ if ( ! class_exists( 'Uclient' ) ) {
 			);
 
 			$fields['envato_key'] = array(
-				'id'      => 'envato_key',
-				'name'    => esc_html__( 'Envato Purchase Code', $text_domain ),
-				'type'    => 'text',
-				'size'    => 60,
-				'class'   => 'envato_key',
-				'visible' => array( 'license_source', '=', 'envato' ),
+				'id'         => 'envato_key',
+				'name'       => esc_html__( 'Envato Purchase Code', $text_domain ),
+				'type'       => 'text',
+				'size'       => 60,
+				'class'      => 'envato_key',
+				'visible'    => array( 'license_source', '=', 'envato' ),
+				'attributes' => array(
+					'type' => 'password'
+				),
+
+
 			);
 
 			$fields['author_key'] = array(
-				'id'      => 'author_key',
-				'name'    => esc_html__( 'Author Purchase Code', $text_domain ),
-				'type'    => 'text',
-				'size'    => 60,
-				'class'   => 'author_key',
-				'visible' => array( 'license_source', '=', 'author' ),
+				'id'         => 'author_key',
+				'name'       => esc_html__( 'Author Purchase Code', $text_domain ),
+				'type'       => 'text',
+				'size'       => 60,
+				'class'      => 'author_key',
+				'visible'    => array( 'license_source', '=', 'author' ),
+				'attributes' => array(
+					'type' => 'password'
+				),
 			);
 
 			$fields['validate_purchase_code_button'] = array(
@@ -253,10 +261,12 @@ if ( ! class_exists( 'Uclient' ) ) {
 			$fields['purchase_code'] = array(
 				'id'         => 'purchase_code',
 				'name'       => esc_html__( 'Purchase Code', $text_domain ),
-				'type'       => 'text',
+				'type'       => 'hidden',
 				'size'       => 60,
 				'attributes' => array(
 					'readonly' => true,
+//					'disabled' => true,
+					'type'     => 'password'
 				),
 				'visible'    => array( 'license_key', 'match', '(.|\s)*\S(.|\s)*' ),
 				'class'      => 'purchase_code',
@@ -266,18 +276,20 @@ if ( ! class_exists( 'Uclient' ) ) {
 			$fields['license_key'] = array(
 				'id'         => 'license_key',
 				'name'       => esc_html__( 'License Key from Update Server', $text_domain ),
-				'type'       => 'text',
+				'type'       => 'hidden',
 				'size'       => 60,
-				'desc'       => esc_html__( 'License Key acquired from plugin update server', $text_domain ),
+				'desc'       => esc_html__( 'License Key shall be acquired from plugin update server', $text_domain ),
 				'attributes' => array(
 					'readonly' => true,
+//					'disabled' => true,
+					'type'     => 'password'
 				),
 				'class'      => 'license_key',
 			);
 
 			$fields['license_status'] = array(
 				'id'   => 'license_status',
-				'name' => esc_html__( 'License Status', $text_domain ),
+//				'name' => esc_html__( 'License Status', $text_domain ),
 				'type' => 'hidden',
 			);
 
@@ -306,7 +318,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 				'name'  => esc_html__( '&nbsp;', $text_domain ),
 				'save'  => false,
 				'type'  => 'button',
-				'std'   => esc_html__( 'Force Deactivate', $text_domain ),
+				'std'   => esc_html__( 'Reset License Settings', $text_domain ),
 				'class' => 'force_deactivate_license_key_button hidden',
 			);
 
