@@ -188,19 +188,17 @@ class UClient {
 
         let changeEvent = new Event('change', {bubbles: true});
 
-        const license_status_field = document.querySelector('input#license_status');
+        const license_status_field = document.querySelector('input.license_status');
 
         if (license_status_field) {
-
             license_status_field.value = licenseStatus;
             console.log('license_status_field.value')
-            console.log(licenseStatus);
 
             license_status_field.dispatchEvent(changeEvent);
             console.log('license_status_field.dispatchEvent')
         }
 
-        const license_key_field = document.querySelector('input#license_key');
+        const license_key_field = document.getElementById('license_key');
         if (license_key_field) {
             license_key_field.value = licenseKey;
             console.log('license_key_field.value')
