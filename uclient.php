@@ -19,7 +19,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 
 		private $api_version;
 
-		private $version = 1.3;
+		private $version = 1.4;
 
 		private $license_key;
 
@@ -360,7 +360,7 @@ if ( ! class_exists( 'Uclient' ) ) {
 					2
 				);
 
-				return false;
+				return $response;
 			}
 
 			return $response;
